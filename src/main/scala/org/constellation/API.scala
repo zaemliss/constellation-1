@@ -74,7 +74,7 @@ object ProcessingConfig {
     minPeerTimeAddedSeconds = 1,
     snapshotInterval = 2,
     snapshotHeightInterval = 2,
-    snapshotHeightDelayInterval = 4,
+    snapshotHeightDelayInterval = 6,
     roundsPerMessage = 1,
     leavingStandbyTimeout = 3
   )
@@ -103,7 +103,7 @@ case class ProcessingConfig(
   peerDiscoveryInterval: Int = 60,
   snapshotHeightInterval: Int = 2,
   snapshotHeightDelayInterval: Int = 40,
-  snapshotHeightRedownloadDelayInterval: Int = 4,
+  snapshotHeightRedownloadDelayInterval: Int = 10,
   snapshotInterval: Int = 2,
   formCheckpointTimeout: Int = 60,
   maxFaucetSize: Int = 1000,
