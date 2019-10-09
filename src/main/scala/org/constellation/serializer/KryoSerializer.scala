@@ -1,9 +1,10 @@
 package org.constellation.serializer
 
 import akka.util.ByteString
-import com.twitter.chill.{KryoPool, ScalaKryoInstantiator}
-import scala.util.Random
+import com.twitter.chill.{KryoPool, KryoPoolHacked, ScalaKryoInstantiator}
+import org.constellation.consensus.SnapshotInfo
 
+import scala.util.Random
 import org.constellation.p2p.SerializedUDPMessage
 
 object KryoSerializer {
@@ -15,6 +16,15 @@ object KryoSerializer {
   }
 
   val kryoPool: KryoPool = KryoPool.withBuffer(
+    guessThreads,
+    new ScalaKryoInstantiator()
+      .setRegistrationRequired(true)
+      .withRegistrar(new ConstellationKryoRegistrar()),
+    32,
+    1024 * 1024 * 100
+  )
+
+  val kryoPoolHacked: KryoPoolHacked = KryoPoolHacked.withBuffer(
     guessThreads,
     new ScalaKryoInstantiator()
       .setRegistrationRequired(true)
@@ -51,6 +61,9 @@ object KryoSerializer {
   def serializeAnyRef(anyRef: AnyRef): Array[Byte] =
     kryoPool.toBytesWithClass(anyRef)
 
+  def serializeAnyRefHacked(anyRef: AnyRef): Array[Byte] =
+    kryoPoolHacked.toBytesWithClass(anyRef)
+
   def deserialize(message: Array[Byte]): AnyRef =
     kryoPool.fromBytes(message)
 
@@ -58,6 +71,10 @@ object KryoSerializer {
 
   def deserializeCast[T](message: Array[Byte]): T =
     kryoPool.fromBytes(message).asInstanceOf[T]
+
+  def deserializeCastHacked[T](message: Array[Byte]): SnapshotInfo =
+    kryoPoolHacked.fromBytes2(message)
+
   /*
 
   def deserializeT[T : ClassTag](message: Array[Byte]): AnyRef= {
