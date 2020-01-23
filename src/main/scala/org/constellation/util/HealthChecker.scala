@@ -115,7 +115,7 @@ class HealthChecker[F[_]: Concurrent](
 //      } else {
 //        Sync[F].pure[Option[List[RecentSnapshot]]](None)
 //      }
-//    } yield result
+    } yield result
 
     check.recoverWith {
       case err =>
