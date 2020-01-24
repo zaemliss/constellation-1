@@ -173,55 +173,57 @@ class HealthChecker[F[_]: Concurrent](
   def startReDownload(
     diff: SnapshotDiff,
     peers: Map[Id, PeerData]
-  ): F[Unit] = {
-    val reDownload = for {
-      _ <- logger.info(s"[${dao.id.short}] Starting re-download process ${diff.snapshotsToDownload.size}")
-
-      _ <- logger.debug(s"[${dao.id.short}] NodeState set to DownloadInProgress")
-
-      _ <- LiftIO[F].liftIO(dao.terminateConsensuses())
-      _ <- logger.debug(s"[${dao.id.short}] Consensuses terminated")
-
-      _ <- downloader.reDownload(
-        diff.snapshotsToDownload.map(_.hash).filterNot(_ == Snapshot.snapshotZeroHash),
-        peers.filterKeys(diff.peers.contains)
-      )
-
-      _ <- Snapshot.removeSnapshots(
-        diff.snapshotsToDelete.map(_.hash).filterNot(_ == Snapshot.snapshotZeroHash)
-      )
-
-      _ <- logger.info(s"[${dao.id.short}] Re-download process finished")
-      _ <- dao.metrics.incrementMetricAsync(Metrics.reDownloadFinished)
+  ): F[Unit] =
+    for {
+      _ <- logger.info(s"[${dao.id.short}] Re-download process should start now!!!111OneOneOne")
     } yield ()
-
-    val wrappedDownload =
-      cluster.compareAndSet(NodeState.validForRedownload, NodeState.DownloadInProgress).flatMap { stateSetResult =>
-        if (stateSetResult.isNewSet) {
-          val recover = reDownload.handleErrorWith { err =>
-            for {
-              _ <- logger.error(err)(s"[${dao.id.short}] re-download process error: ${err.getMessage}")
-              recoverSet <- cluster.compareAndSet(NodeState.validDuringDownload, stateSetResult.oldState)
-              _ <- logger
-                .info(s"[${dao.id.short}] trying set state back to: ${stateSetResult.oldState} result: ${recoverSet}")
-              _ <- dao.metrics.incrementMetricAsync(Metrics.reDownloadError)
-              _ <- Sync[F].raiseError[Unit](err)
-            } yield ()
-          }
-
-          recover.flatMap(
-            _ =>
-              cluster
-                .compareAndSet(NodeState.validDuringDownload, stateSetResult.oldState)
-                .void
-          )
-        } else {
-          logger.warn(s"Download process can't start due to invalid node state: ${stateSetResult.oldState}")
-        }
-      }
-
-    wrappedDownload
-  }
+//    val reDownload = for {
+//      _ <- logger.info(s"[${dao.id.short}] Starting re-download process ${diff.snapshotsToDownload.size}")
+//
+//      _ <- logger.debug(s"[${dao.id.short}] NodeState set to DownloadInProgress")
+//
+//      _ <- LiftIO[F].liftIO(dao.terminateConsensuses())
+//      _ <- logger.debug(s"[${dao.id.short}] Consensuses terminated")
+//
+//      _ <- downloader.reDownload(
+//        diff.snapshotsToDownload.map(_.hash).filterNot(_ == Snapshot.snapshotZeroHash),
+//        peers.filterKeys(diff.peers.contains)
+//      )
+//
+//      _ <- Snapshot.removeSnapshots(
+//        diff.snapshotsToDelete.map(_.hash).filterNot(_ == Snapshot.snapshotZeroHash)
+//      )
+//
+//      _ <- logger.info(s"[${dao.id.short}] Re-download process finished")
+//      _ <- dao.metrics.incrementMetricAsync(Metrics.reDownloadFinished)
+//    } yield ()
+//
+//    val wrappedDownload =
+//      cluster.compareAndSet(NodeState.validForRedownload, NodeState.DownloadInProgress).flatMap { stateSetResult =>
+//        if (stateSetResult.isNewSet) {
+//          val recover = reDownload.handleErrorWith { err =>
+//            for {
+//              _ <- logger.error(err)(s"[${dao.id.short}] re-download process error: ${err.getMessage}")
+//              recoverSet <- cluster.compareAndSet(NodeState.validDuringDownload, stateSetResult.oldState)
+//              _ <- logger
+//                .info(s"[${dao.id.short}] trying set state back to: ${stateSetResult.oldState} result: ${recoverSet}")
+//              _ <- dao.metrics.incrementMetricAsync(Metrics.reDownloadError)
+//              _ <- Sync[F].raiseError[Unit](err)
+//            } yield ()
+//          }
+//
+//          recover.flatMap(
+//            _ =>
+//              cluster
+//                .compareAndSet(NodeState.validDuringDownload, stateSetResult.oldState)
+//                .void
+//          )
+//        } else {
+//          logger.warn(s"Download process can't start due to invalid node state: ${stateSetResult.oldState}")
+//        }
+//      }
+//
+//    wrappedDownload
 
   private def collectSnapshot(peers: Map[Id, PeerData]): F[List[(Id, List[RecentSnapshot])]] =
     peers.toList.traverse(
