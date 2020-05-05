@@ -1,5 +1,5 @@
 package org.constellation.playground.schema
 
-case class Fiber()
+class Fiber()
 
 object Fiber {}
