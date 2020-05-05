@@ -2,24 +2,17 @@ package org.constellation.playground.schema
 
 import cats.{FlatMap, Functor, Monad}
 import cats.data.Kleisli
-import cats.effect.IO
+import cats.effect.{IO, Sync}
 import cats.implicits._
 import higherkindness.droste.data.Fix
 import higherkindness.droste.{Algebra, AlgebraM, Coalgebra, scheme}
+import org.constellation.playground.schema.Cell.K
 
 sealed trait Cell[A] {}
-case class Result[A](value: Fiber) extends Cell[A] {
-  def op[F[_]](): Kleisli[F, Cell[A], Fiber] = ???
-}
-case class Lookup[A](value: A) extends Cell[A] {
-  def op[F[_]](): Kleisli[F, Cell[A], Fiber] = ???
-}
-case class Upsert[A](value: A) extends Cell[A] {
-  def op[F[_]](): Kleisli[F, Cell[A], Fiber] = ???
-}
-case class Compute[A](value: A) extends Cell[A] {
-  def op[F[_]](): Kleisli[F, Cell[A], Fiber] = ???
-}
+case class Result[A](value: Fiber) extends Cell[A]
+case class Lookup[A](value: A) extends Cell[A]
+case class Upsert[A](value: A) extends Cell[A]
+case class Compute[A](value: A) extends Cell[A]
 
 object Cell {
   type K[F[_], A] = Kleisli[F, Cell[A], Fiber]
@@ -46,21 +39,31 @@ object Cell {
     override def map[A, B](fa: Cell[A])(f: A => B): Cell[B] = cellFunctorImpl.map(fa)(f)
   }
 
-  val fiber: Fiber = new Bundle(Seq(new Fiber()))
-  val cell: Cell[Fiber] = Lookup[Fiber](fiber)
-
   val resultCoalgebra: Coalgebra[Cell, Fiber] =
     Coalgebra[Cell, Fiber](fiber => Result(fiber))
 
-//  val executeAlgebra: Algebra[Cell, Kleisli[IO, Cell, Fiber]] =
-//    Algebra {
-//      case Result(a)      => ???
-//      case l @ Lookup(_)  => l.op[IO]()
-//      case u @ Upsert(_)  => u.op[IO]()
-//      case c @ Compute(_) => c.op[IO]()
-//    }
+  case class Context(database: String)
 
-//  val execute: Fix[Cell] => Kleisli[IO, Cell, Fiber] = scheme.cata(executeAlgebra)
+  def lookup[F[_]](s: String)(implicit F: Sync[F]): Kleisli[F, Context, String] = Kleisli.apply { ctx =>
+    F.pure(s"{ s: ${s} | lookup for db: ${ctx.database} }")
+  }
+  def upsert[F[_]]: Kleisli[F, Context, Fiber] = ???
+  def compute[F[_]]: Kleisli[F, Context, Fiber] = ???
+
+  // TODO: use Fiber instead of String
+
+  val executeAlgebra: Algebra[Cell, Kleisli[IO, Context, String]] =
+    Algebra {
+      case Result(a) => Kleisli.pure("result")
+      case Lookup(a) =>
+        a.flatMap { s =>
+          lookup[IO](s)
+        }
+      case Upsert(_)  => ???
+      case Compute(_) => ???
+    }
+
+  val execute = scheme.cata(executeAlgebra)
 
   val printAlgebra: Algebra[Cell, String] =
     Algebra[Cell, String] {
@@ -69,4 +72,6 @@ object Cell {
       case Upsert(a)  => s"upsert: ${a}"
       case Compute(a) => s"compute; ${a}"
     }
+
+  val print = scheme.cata(printAlgebra)
 }
